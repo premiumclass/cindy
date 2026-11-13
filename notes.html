@@ -131,6 +131,8 @@
     border: 0.3mm solid var(--frame); border-radius: 3mm;
   }
   .ln { position: absolute; left: 0; right: 0; border-top: 0.25mm solid var(--line); }
+  .gv { position: absolute; top: 0; bottom: 0; border-left: 0.2mm solid var(--line); }
+  .gh { position: absolute; left: 0; right: 0; border-top: 0.2mm solid var(--line); }
 
   /* ---------- 인쇄 ---------- */
   #printArea { display: none; }
@@ -165,6 +167,14 @@
       <div class="range-row">
         <input type="range" id="gap" min="6" max="12" step="0.5">
         <output id="gapOut"></output>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label for="grid">모눈 간격</label>
+      <div class="range-row">
+        <input type="range" id="grid" min="3" max="10" step="0.5">
+        <output id="gridOut"></output>
       </div>
     </div>
 
@@ -220,6 +230,18 @@
         { title: "개념 시험", ratio: 7, lined: false },
         { title: "어구 시험", ratio: 3, lined: false }
       ]
+    },
+    lineNote: {
+      name: "줄 노트",
+      sections: [
+        { title: "", ratio: 1, lined: true }
+      ]
+    },
+    gridNote: {
+      name: "모눈 노트",
+      sections: [
+        { title: "", ratio: 1, grid: true }
+      ]
     }
   };
 
@@ -231,6 +253,8 @@
     academy: document.getElementById("academy"),
     gap: document.getElementById("gap"),
     gapOut: document.getElementById("gapOut"),
+    grid: document.getElementById("grid"),
+    gridOut: document.getElementById("gridOut"),
     duplexPrinter: document.getElementById("duplexPrinter"),
     radioSingle: document.getElementById("radioSingle"),
     radioDouble: document.getElementById("radioDouble"),
@@ -246,19 +270,20 @@
   var modeInputs = document.querySelectorAll('input[name="mode"]');
 
   /* ===== 설정 저장/불러오기 ===== */
-  var state = { template: "reading", academy: "", gap: 8, duplexPrinter: true, mode: "single" };
+  var state = { template: "reading", academy: "", gap: 8, gridGap: 5, duplexPrinter: true, mode: "single" };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "null");
     if (saved) {
       if (typeof saved.academy === "string") state.academy = saved.academy;
       if (typeof saved.gap === "number" && saved.gap >= 6 && saved.gap <= 12) state.gap = saved.gap;
+      if (typeof saved.gridGap === "number" && saved.gridGap >= 3 && saved.gridGap <= 10) state.gridGap = saved.gridGap;
       if (typeof saved.duplexPrinter === "boolean") state.duplexPrinter = saved.duplexPrinter;
     }
   } catch (e) {}
   function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        academy: state.academy, gap: state.gap, duplexPrinter: state.duplexPrinter
+        academy: state.academy, gap: state.gap, gridGap: state.gridGap, duplexPrinter: state.duplexPrinter
       }));
     } catch (e) {}
   }
@@ -284,8 +309,8 @@
     tpl.sections.forEach(function (sec) {
       html +=
         '<section class="sec" style="flex:' + sec.ratio + '">' +
-          '<div class="tag-row"><span class="tag">' + esc(sec.title) + '</span></div>' +
-          '<div class="box' + (sec.lined ? ' lined' : '') + '"></div>' +
+          (sec.title ? '<div class="tag-row"><span class="tag">' + esc(sec.title) + '</span></div>' : '') +
+          '<div class="box' + (sec.lined ? ' lined' : '') + (sec.grid ? ' grid' : '') + '"></div>' +
         '</section>';
     });
     html += '</div>';
@@ -306,6 +331,19 @@
       }
       box.insertAdjacentHTML("beforeend", out);
     });
+
+    sheet.querySelectorAll(".box.grid").forEach(function (box) {
+      box.querySelectorAll(".gv, .gh").forEach(function (n) { n.remove(); });
+      var wMm = box.clientWidth * MM_PER_PX;
+      var hMm = box.clientHeight * MM_PER_PX;
+      var g = state.gridGap;
+      var nx = Math.floor(wMm / g), ny = Math.floor(hMm / g);
+      var x0 = (wMm - nx * g) / 2, y0 = (hMm - ny * g) / 2;
+      var out = "";
+      for (var i = 1; i < nx; i++) out += '<div class="gv" style="left:' + (x0 + i * g).toFixed(2) + 'mm"></div>';
+      for (var j = 1; j < ny; j++) out += '<div class="gh" style="top:' + (y0 + j * g).toFixed(2) + 'mm"></div>';
+      box.insertAdjacentHTML("beforeend", out);
+    });
   }
 
   /* ===== 미리보기 ===== */
@@ -315,6 +353,9 @@
     var hasLined = tpl.sections.some(function (s) { return s.lined; });
     el.gap.disabled = !hasLined;
     el.gap.closest(".field-group").classList.toggle("is-disabled", !hasLined);
+    var hasGrid = tpl.sections.some(function (s) { return s.grid; });
+    el.grid.disabled = !hasGrid;
+    el.grid.closest(".field-group").classList.toggle("is-disabled", !hasGrid);
     el.scaler.innerHTML = "";
     previewSheet = buildSheet(tpl);
     el.scaler.appendChild(previewSheet);
@@ -419,6 +460,8 @@
   el.academy.value = state.academy;
   el.gap.value = state.gap;
   el.gapOut.textContent = state.gap.toFixed(1) + "mm";
+  el.grid.value = state.gridGap;
+  el.gridOut.textContent = state.gridGap.toFixed(1) + "mm";
   el.duplexPrinter.checked = state.duplexPrinter;
 
   el.template.addEventListener("change", function () { state.template = el.template.value; renderPreview(); });
@@ -430,6 +473,11 @@
   el.gap.addEventListener("input", function () {
     state.gap = parseFloat(el.gap.value);
     el.gapOut.textContent = state.gap.toFixed(1) + "mm";
+    fillLines(previewSheet); save();
+  });
+  el.grid.addEventListener("input", function () {
+    state.gridGap = parseFloat(el.grid.value);
+    el.gridOut.textContent = state.gridGap.toFixed(1) + "mm";
     fillLines(previewSheet); save();
   });
   el.duplexPrinter.addEventListener("change", function () {

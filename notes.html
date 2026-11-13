@@ -69,7 +69,7 @@
   .range-row input { flex: 1; accent-color: var(--accent); }
   .range-row output { min-width: 52px; text-align: right; font-size: 15px; }
   .check, .radio { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; padding: 3px 0; }
-  .check input, .radio input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+  .check input, .radio input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0 6px 0 0; flex-shrink: 0; }
   .radio.is-disabled { color: var(--text-soft); opacity: 0.55; cursor: not-allowed; }
   .field-group.is-disabled { opacity: 0.45; }
   .field-group.is-disabled input { cursor: not-allowed; }
@@ -334,11 +334,25 @@
 
     sheet.querySelectorAll(".box.grid").forEach(function (box) {
       box.querySelectorAll(".gv, .gh").forEach(function (n) { n.remove(); });
+      box.style.width = "";
+      box.style.alignSelf = "";
+      box.style.height = "";
+      box.style.flex = "";
+      box.style.margin = "";
       var wMm = box.clientWidth * MM_PER_PX;
       var hMm = box.clientHeight * MM_PER_PX;
       var g = state.gridGap;
       var nx = Math.floor(wMm / g), ny = Math.floor(hMm / g);
-      var x0 = (wMm - nx * g) / 2, y0 = (hMm - ny * g) / 2;
+      // 가로: 테두리 안쪽 너비를 모눈 간격의 정수배로 맞춰 양 끝 칸도 동일한 너비가 되게 함
+      var borderMm = (box.offsetWidth - box.clientWidth) * MM_PER_PX;
+      box.style.width = (nx * g + borderMm).toFixed(2) + "mm";
+      box.style.alignSelf = "center";
+      // 세로: 테두리 안쪽 높이도 모눈 간격의 정수배로 맞춰 위아래 칸도 동일하게 함
+      var borderYMm = (box.offsetHeight - box.clientHeight) * MM_PER_PX;
+      box.style.flex = "none";
+      box.style.height = (ny * g + borderYMm).toFixed(2) + "mm";
+      box.style.margin = "auto 0";
+      var x0 = 0, y0 = 0;
       var out = "";
       for (var i = 1; i < nx; i++) out += '<div class="gv" style="left:' + (x0 + i * g).toFixed(2) + 'mm"></div>';
       for (var j = 1; j < ny; j++) out += '<div class="gh" style="top:' + (y0 + j * g).toFixed(2) + 'mm"></div>';
@@ -390,7 +404,7 @@
     if (state.mode === "double") {
       el.modeHint.textContent = "한 장의 앞뒤에 같은 양식이 인쇄돼요.";
     } else if (state.duplexPrinter) {
-      el.modeHint.textContent = "양면 프린터에서도 앞면에만 인쇄되도록 각 장 뒤에 빈 페이지를 넣어요.";
+      el.modeHint.textContent = "";
     } else {
       el.modeHint.textContent = "양면 출력은 양면 프린터 사용 시에만 선택할 수 있어요.";
     }

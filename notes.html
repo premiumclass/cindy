@@ -325,7 +325,9 @@
     if (!previewSheet) return;
     var w = previewSheet.offsetWidth, h = previewSheet.offsetHeight;
     var avail = el.stage.clientWidth;
-    var scale = Math.min(1, avail / w);
+    var cs = getComputedStyle(el.stage.parentNode);
+    var availH = window.innerHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2;
+    var scale = Math.min(1, avail / w, availH / h);
     el.scaler.style.transform = "scale(" + scale + ")";
     el.scalerWrap.style.width = (w * scale) + "px";
     el.scalerWrap.style.height = (h * scale) + "px";

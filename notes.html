@@ -324,12 +324,15 @@
     boxes.forEach(function (box) {
       box.querySelectorAll(".ln").forEach(function (n) { n.remove(); });
       var hMm = box.clientHeight * MM_PER_PX;
-      var gap = state.gap;
+      // 높이는 고정, 높이를 같은 크기로 나눠 위아래 끝 간격까지 모두 동일하게 함
+      var n = Math.max(1, Math.round(hMm / state.gap));
+      var gap = hMm / n;
       var out = "";
-      for (var k = 1; k * gap <= hMm - gap * 0.5; k++) {
-        out += '<div class="ln" style="top:' + (k * gap).toFixed(2) + 'mm"></div>';
+      for (var k = 1; k < n; k++) {
+        out += '<div class="ln" style="top:' + (k * gap).toFixed(3) + 'mm"></div>';
       }
       box.insertAdjacentHTML("beforeend", out);
+      el.gapOut.textContent = gap.toFixed(1) + "mm";
     });
 
     sheet.querySelectorAll(".box.grid").forEach(function (box) {
